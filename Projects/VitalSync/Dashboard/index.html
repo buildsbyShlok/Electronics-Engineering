@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pulse Oximeter</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header>
+  <h1>PULSE OXIMETER</h1>
+  <span class="status">LIVE — Connected</span>
+</header>
+
+<main>
+  <!-- TOP CARD -->
+  <div class="card big-card">
+    <div class="value" id="bpmValue">71</div>
+    <div class="badge" id="healthBadge">Healthy</div>
+
+    <div class="meta">
+      <div>
+        <label>SpO₂</label>
+        <span id="spo2Value">93%</span>
+      </div>
+      <div>
+        <label>Status</label>
+        <span id="healthText">GOOD</span>
+      </div>
+      <div>
+        <label>Last update</label>
+        <span id="timeValue">Just Now</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRAPH CARD -->
+  <div class="card">
+    <h3>Trend </h3>
+    <canvas id="chart"></canvas>
+  </div>
+</main>
+
+<script src="script.js"></script>
+</body>
+</html>

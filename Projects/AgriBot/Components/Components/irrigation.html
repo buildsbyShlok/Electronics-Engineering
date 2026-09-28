@@ -1,0 +1,37 @@
+<div class="card">
+  <h2>Irrigation Advisor</h2>
+  <p class="sub">Advice based on current soil, tank and weather data</p>
+  <div class="list" id="irrigation-advice-list"></div>
+  <div style="margin-top:12px">
+    <button class="btn" id="irrigation-simulate">Simulate Next 24h</button>
+  </div>
+</div>
+
+<script>
+function init_irrigation(){
+  const list = document.getElementById('irrigation-advice-list');
+  document.getElementById('irrigation-simulate').addEventListener('click', ()=>{ alert('Simulation placeholder'); });
+
+  function updateAdvice(v){
+    const soilCap = v.soilCapacitive?.value ?? null;
+    const soilFork = v.soilFork?.value ?? null;
+    const avg = (soilCap!=null && soilFork!=null) ? ((Number(soilCap)+Number(soilFork))/2) : (soilCap!=null?Number(soilCap):(soilFork!=null?Number(soilFork):null));
+    const tank = v.tank?.level ?? null;
+    const dht = v.dht || {};
+
+    const adv = [];
+    if(avg!=null && avg < 35) adv.push('Soil low ('+avg.toFixed(1)+'%) — Water recommended now.');
+    else if(avg!=null) adv.push('Soil ok ('+avg.toFixed(1)+'%).');
+
+    if(tank!=null && tank==0) adv.push('Tank low — refill before long irrigation.');
+
+    if(dht.humidity > 80) adv.push('High humidity — avoid overhead irrigation (disease risk).');
+
+    list.innerHTML = adv.length ? adv.map(a=>'<div class="row"><div>'+a+'</div></div>').join('') : '<div class="row"><div>No advice right now</div></div>';
+  }
+
+  window.addEventListener('sf:realtime', (e)=> updateAdvice(e.detail || {}));
+  // if global state already exists, seed it (useful)
+  if(window.globalState && window.globalState.latest) updateAdvice(window.globalState.latest);
+}
+</script>

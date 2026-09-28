@@ -1,0 +1,23 @@
+<div class="card">
+  <h2>Water Tank Manager</h2>
+  <p class="sub">Live level & simple usage</p>
+  <div class="metric" id="tank-page-metric">--</div>
+  <div id="tank-usage" style="margin-top:8px"></div>
+</div>
+
+<script>
+function init_tank(){
+  const metric = document.getElementById('tank-page-metric');
+  const usage = document.getElementById('tank-usage');
+
+  function update(v){
+    const t = v.tank?.level ?? null;
+    if(t!=null) metric.textContent = (t==1?'Sufficient':'LOW');
+    // naive usage demo: count transitions from 1->0 in last hour from globalState.history.tank if available
+    usage.textContent = 'Realtime state: ' + (t==1?'OK':'LOW');
+  }
+
+  window.addEventListener('sf:realtime', (e)=> update(e.detail || {}));
+  if(window.globalState && window.globalState.latest) update(window.globalState.latest);
+}
+</script>

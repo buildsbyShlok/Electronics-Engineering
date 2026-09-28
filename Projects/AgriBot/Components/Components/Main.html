@@ -1,0 +1,75 @@
+<div class="card">
+  <h2>Crop Health Summary</h2>
+  <div class="home-grid" style="margin-top:12px">
+    <div class="card">
+      <div class="title"><strong>Soil Moisture</strong><div class="sub">Root-zone average</div></div>
+      <div class="metric" id="home-soil-metric">-- %</div>
+      <div id="home-soil-desc" class="sub">Capacitive & Fork</div>
+    </div>
+
+    <div class="card">
+      <div class="title"><strong>Air</strong><div class="sub">Temp & Humidity</div></div>
+      <div class="metric" id="home-air-metric">-- °C · -- %</div>
+      <div id="home-air-desc" class="sub">DHT sensor</div>
+    </div>
+
+    <div class="card">
+      <div class="title"><strong>Sunlight</strong><div class="sub">Today's hours</div></div>
+      <div class="metric" id="home-light-metric">-- hrs</div>
+      <canvas id="home-light-mini" style="height:80px"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="title"><strong>Water Tank</strong><div class="sub">Level</div></div>
+      <div class="metric" id="home-tank-metric">--</div>
+      <div id="home-tank-desc" class="sub">Float switch</div>
+    </div>
+  </div>
+
+  <div style="margin-top:12px" id="home-recommendations"></div>
+</div>
+
+<script>
+function init_home(){
+  // chart
+  const ctx = document.getElementById('home-light-mini').getContext('2d');
+  window.homeLightMini = new Chart(ctx, { type:'line', data:{ labels:[], datasets:[{data:[], borderColor:'#88b04b', tension:0.3}] }, options:{ plugins:{legend:{display:false}}, scales:{x:{display:false}} } });
+
+  // update UI on realtime events
+  window.addEventListener('sf:realtime', (e)=>{
+    const v = e.detail || {};
+    const soilCap = v.soilCapacitive?.value ?? null;
+    const soilFork = v.soilFork?.value ?? null;
+    const avg = (soilCap != null && soilFork != null) ? ((Number(soilCap) + Number(soilFork))/2).toFixed(1) : (soilCap!=null?Number(soilCap).toFixed(1):(soilFork!=null?Number(soilFork).toFixed(1):null));
+    document.getElementById('home-soil-metric').textContent = avg ? avg + ' %' : '--';
+
+    const dht = v.dht || {};
+    if(dht.temperature !== undefined){
+      document.getElementById('home-air-metric').textContent = Number(dht.temperature).toFixed(1) + ' °C · ' + Number(dht.humidity).toFixed(1) + ' %';
+    }
+
+    const ldr = v.ldr?.value ?? null;
+    if(ldr!=null){
+      pushToHomeMiniChart(ldr);
+      const approxHours = ''; // we keep it simple here
+      document.getElementById('home-light-metric').textContent = 'Live';
+    }
+
+    const tank = v.tank?.level ?? null;
+    if(tank!=null){
+      document.getElementById('home-tank-metric').textContent = (tank==1?'OK':'LOW');
+    }
+  });
+
+  // helper
+  function pushToHomeMiniChart(val){
+    window.homeLightMini.data.labels.push('');
+    window.homeLightMini.data.datasets[0].data.push(Number(val));
+    if(window.homeLightMini.data.labels.length > 30){
+      window.homeLightMini.data.labels.shift();
+      window.homeLightMini.data.datasets[0].data.shift();
+    }
+    window.homeLightMini.update();
+  }
+}
+</script>

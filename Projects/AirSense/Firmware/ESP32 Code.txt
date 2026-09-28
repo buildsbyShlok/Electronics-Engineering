@@ -1,0 +1,97 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <LiquidCrystal_I2C.h>
+#include <DHT.h>
+
+#define MQ135_PIN 34
+#define DHTPIN 4
+#define DHTTYPE DHT11
+
+DHT dht(DHTPIN, DHTTYPE);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// WIFI
+const char* ssid = "S24";
+const char* pass = "12121212";
+
+// FIREBASE JSON URL
+String firebase = "https://aqi-index-88b4c-default-rtdb.asia-southeast1.firebasedatabase.app/aqi.json";
+
+int raw_clean = 1500;
+int raw_delhi = 2295;
+int raw_max   = 3300;
+
+int convertToAQI(int raw) {
+  if (raw <= raw_clean) return 50;
+  if (raw <= raw_delhi) return map(raw, raw_clean, raw_delhi, 50, 300);
+  if (raw <= raw_max) return map(raw, raw_delhi, raw_max, 300, 500);
+  return 500;
+}
+
+String getStatus(int aqi) {
+  if (aqi <= 50) return "GOOD";
+  if (aqi <= 100) return "MOD";
+  if (aqi <= 200) return "POOR";
+  if (aqi <= 300) return "V.POOR";
+  return "SEVERE";
+}
+
+void setup() {
+  Serial.begin(115200);
+  lcd.init();
+  lcd.backlight();
+  dht.begin();
+
+  lcd.setCursor(0, 0);
+  lcd.print(" AQI INDEX METER ");
+  lcd.setCursor(0, 1);
+  lcd.print(" Initializing...");
+  delay(2500);
+  lcd.clear();
+
+  WiFi.begin(ssid, pass);
+  Serial.print("WiFi: ");
+  while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
+  Serial.println("\nConnected");
+}
+
+void loop() {
+  int raw = analogRead(MQ135_PIN);
+  int aqi = convertToAQI(raw);
+  String status = getStatus(aqi);
+  float temp = dht.readTemperature();
+  float hum = dht.readHumidity();
+
+  // LCD
+  lcd.setCursor(0, 0);
+  lcd.print("AQI:");
+  lcd.print(aqi);
+  lcd.print(" ");
+  lcd.print(status);
+
+  lcd.setCursor(0, 1);
+  lcd.print("Temp:");
+  lcd.print((int)temp);
+  lcd.print(" Humi:");
+  lcd.print((int)hum);
+  lcd.print("   ");
+
+  // POST to Firebase
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(firebase);
+    http.addHeader("Content-Type", "application/json");
+    unsigned long ts = millis() / 1000;
+    String payload = "{\"raw\":"
+                      + String(raw) + ",\"aqi\":"
+                      + String(aqi) + ",\"status\":\""
+                      + status + "\",\"temp\":"
+                      + String(temp) + ",\"hum\":"
+                      + String(hum) + ",\"ts\":"
+                      + String(ts) + "}";
+    http.PUT(payload);
+    http.end();
+  }
+
+  delay(1000);
+}

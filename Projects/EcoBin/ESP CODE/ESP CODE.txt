@@ -1,0 +1,120 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// ====== WiFi ======
+const char* WIFI_SSID     = "OnePlus 11";    // 🔥 your WiFi/Hotspot name
+const char* WIFI_PASSWORD = "12345678";      // 🔥 your WiFi/Hotspot password
+
+// ====== Firebase DB URL ======
+const String FIREBASE_DB_URL = "https://waste-detection-5b56e-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+// ====== Pins ======
+#define IR_PIN 23   // IR sensor OUT pin
+
+// ====== Bin fill level ======
+int fillLevel = 0;      // Start empty
+bool lastIR = HIGH;     // For detecting rising edge (hand in)
+
+// ====== LCD (I2C) ======
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// ====== Setup ======
+void setup() {
+  Serial.begin(115200);
+  Wire.begin();
+  lcd.init();
+  lcd.backlight();
+  pinMode(IR_PIN, INPUT);
+
+  lcd.setCursor(0,0); lcd.print("Connecting WiFi");
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500); Serial.print(".");
+  }
+  Serial.println("\nWiFi connected!");
+  lcd.clear();
+  lcd.setCursor(0,0); lcd.print("WiFi connected");
+  delay(1500);
+  lcd.clear();
+}
+
+// ====== Send to Firebase ======
+void sendToFirebase(int fill, bool waste) {
+  if (WiFi.status() != WL_CONNECTED) return;
+
+  String url = FIREBASE_DB_URL + "/bins/bin1.json";
+  String json = "{\"fillLevel\":" + String(fill) +
+                ",\"distance\":0," +
+                "\"wasteDetected\":" + (waste?"true":"false") +
+                ",\"ts\":" + String(millis()) + "}";
+
+  HTTPClient http;
+  http.begin(url);
+  http.addHeader("Content-Type", "application/json");
+  int code = http.PUT(json);
+  Serial.print("HTTP code: "); Serial.println(code);
+  http.end();
+}
+
+// ====== Draw Progress Bar on LCD ======
+void drawProgressBar(int percent) {
+  int totalBlocks = 10;             // total blocks in bar
+  int filledBlocks = (percent * totalBlocks) / 100;
+  lcd.setCursor(0,0);
+  lcd.print("Fill:");
+  lcd.print(percent);
+  lcd.print("%   ");
+
+  lcd.setCursor(0,1);
+  for (int i = 0; i < totalBlocks; i++) {
+    if (i < filledBlocks) {
+      lcd.write(byte(255)); // full block char
+    } else {
+      lcd.print(" ");       // empty space
+    }
+  }
+}
+
+// ====== Loop ======
+void loop() {
+  bool irNow = digitalRead(IR_PIN);
+
+  // Detect a NEW object (falling edge: HIGH -> LOW)
+  if (lastIR == HIGH && irNow == LOW) {
+    fillLevel += 10;
+    if (fillLevel > 100) fillLevel = 0; // reset
+
+    // Show action message
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.printf("Fill: %d%%   ", fillLevel);
+    lcd.setCursor(0,1);
+    if (fillLevel == 0) {
+      lcd.print("Bin Reset     ");
+    } else if (fillLevel == 100) {
+      lcd.print("Bin FULL!     ");
+    } else {
+      lcd.print("Garbage Added ");
+    }
+
+    // Send to Firebase
+    sendToFirebase(fillLevel, true);
+
+    // Debug
+    Serial.printf("IR Triggered -> Fill: %d%%\n", fillLevel);
+
+    delay(1500); // show message briefly
+  }
+
+  // Normal display (progress bar)
+  lcd.clear();
+  drawProgressBar(fillLevel);
+
+  // Send to Firebase (no new waste)
+  sendToFirebase(fillLevel, false);
+
+  lastIR = irNow;
+  delay(500);
+}

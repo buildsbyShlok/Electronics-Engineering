@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AQI Index Meter – Live Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>AQI INDEX METER</h1>
+    <p id="subtitle">Connecting…</p>
+  </header>
+
+  <main>
+    <section class="card main-card">
+      <div class="aqi-row">
+        <div class="aqi-main" id="aqiValue">--</div>
+        <div class="aqi-status" id="aqiStatus">--</div>
+      </div>
+
+      <div class="meta-row">
+        <div class="meta-item">
+          <span class="meta-label">Raw</span>
+          <span class="meta-value" id="rawValue">--</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Temperature</span>
+          <span class="meta-value" id="tempValue">-- °C</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Humidity</span>
+          <span class="meta-value" id="humValue">-- %</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Last update</span>
+          <span class="meta-value" id="lastUpdate">--</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card graph-card">
+      <h2>Trend (last 40 readings)</h2>
+      <canvas id="aqiChart" height="140"></canvas>
+    </section>
+  </main>
+
+  <footer>
+    <small>ESP32 AQI Meter • Firebase Realtime DB</small>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

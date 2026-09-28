@@ -1,0 +1,26 @@
+<div class="card">
+  <h2>Climate & Disease Risk</h2>
+  <p class="sub">Rules & suggestions</p>
+  <div id="disease-alerts"></div>
+</div>
+
+<script>
+function init_climate(){
+  const out = document.getElementById('disease-alerts');
+
+  function update(v){
+    const dht = v.dht || {};
+    const soilCap = v.soilCapacitive?.value ?? null;
+    const alerts = [];
+    if(dht.humidity > 80) alerts.push('High humidity — risk of fungal disease.');
+    if(dht.temperature > 35) alerts.push('High temperature — heat stress risk.');
+    if(dht.temperature < 10) alerts.push('Low temperature — frost risk possible.');
+    if(soilCap != null && soilCap < 20) alerts.push('Very low soil moisture — plant stress likely.');
+
+    out.innerHTML = alerts.length ? ('<ul>' + alerts.map(a=>'<li>'+a+'</li>').join('') + '</ul>') : '<div class="sub">No climate alerts</div>';
+  }
+
+  window.addEventListener('sf:realtime', (e)=> update(e.detail || {}));
+  if(window.globalState && window.globalState.latest) update(window.globalState.latest);
+}
+</script>

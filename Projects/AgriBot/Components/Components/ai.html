@@ -1,0 +1,25 @@
+<div class="card">
+  <h2>AI Suggestions</h2>
+  <p class="sub">Basic rule-based recommendations</p>
+  <div id="ai-suggestions"></div>
+</div>
+
+<script>
+function init_ai(){
+  const out = document.getElementById('ai-suggestions');
+
+  function update(v){
+    const advice = [];
+    const soilCap = v.soilCapacitive?.value ?? null;
+    const dht = v.dht || {};
+    if(soilCap!=null && soilCap < 30) advice.push('Reduce fertilizer; water first to ensure uptake.');
+    if(dht.humidity > 80) advice.push('Consider ventilation to reduce fungal risk.');
+    if(dht.temperature > 32) advice.push('Avoid midday irrigation; water early morning.');
+    if(advice.length==0) out.innerHTML = '<div class="sub">No suggestions right now</div>';
+    else out.innerHTML = '<ul>' + advice.map(a=>'<li>'+a+'</li>').join('') + '</ul>';
+  }
+
+  window.addEventListener('sf:realtime', (e)=> update(e.detail || {}));
+  if(window.globalState && window.globalState.latest) update(window.globalState.latest);
+}
+</script>

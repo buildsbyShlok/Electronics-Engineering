@@ -1,0 +1,39 @@
+<div class="card">
+  <h2>Historical Graphs</h2>
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+    <div><canvas id="hist-soil"></canvas></div>
+    <div><canvas id="hist-temp"></canvas></div>
+  </div>
+  <div style="margin-top:12px"><canvas id="hist-light"></canvas></div>
+</div>
+
+<script>
+function init_history(){
+  window.histSoil = new Chart(document.getElementById('hist-soil').getContext('2d'), { type:'line', data:{labels:[],datasets:[{label:'Soil %',data:[],borderColor:'#2f7a3e'}]}, options:{responsive:true} });
+  window.histTemp = new Chart(document.getElementById('hist-temp').getContext('2d'), { type:'line', data:{labels:[],datasets:[{label:'Temp C',data:[],borderColor:'#e07a5f'}]}, options:{responsive:true} });
+  window.histLight = new Chart(document.getElementById('hist-light').getContext('2d'), { type:'line', data:{labels:[],datasets:[{label:'LDR',data:[],borderColor:'#88b04b'}]}, options:{responsive:true} });
+
+  // populate if history loaded
+  window.addEventListener('sf:history', (e)=>{
+    const h = e.detail || {};
+    if(h.soil){
+      const keys = Object.keys(h.soil).slice(-100);
+      window.histSoil.data.labels = keys.map(k => new Date(Number(k)).toLocaleTimeString());
+      window.histSoil.data.datasets[0].data = keys.map(k => h.soil[k]);
+      window.histSoil.update();
+    }
+    if(h.temp){
+      const keys = Object.keys(h.temp).slice(-100);
+      window.histTemp.data.labels = keys.map(k => new Date(Number(k)).toLocaleTimeString());
+      window.histTemp.data.datasets[0].data = keys.map(k => h.temp[k]);
+      window.histTemp.update();
+    }
+    if(h.light){
+      const keys = Object.keys(h.light).slice(-100);
+      window.histLight.data.labels = keys.map(k => new Date(Number(k)).toLocaleTimeString());
+      window.histLight.data.datasets[0].data = keys.map(k => h.light[k]);
+      window.histLight.update();
+    }
+  });
+}
+</script>

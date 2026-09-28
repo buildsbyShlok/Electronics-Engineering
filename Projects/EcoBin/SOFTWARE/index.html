@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Smart Waste Dashboard ♻</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body { background:linear-gradient(135deg,#f0fdfa,#ffffff); font-family:'Segoe UI',sans-serif; }
+    .navbar { border-radius:12px; margin-bottom:20px; }
+    .card { border-radius:14px; box-shadow:0 6px 20px rgba(0,0,0,0.08); }
+    .progress { height:28px; border-radius:8px; }
+    .progress-bar { font-weight:bold; }
+    .blink { animation: blink 1s infinite; }
+    @keyframes blink {0%{opacity:1;}50%{opacity:0.3;}100%{opacity:1;}}
+  </style>
+</head>
+
+<body class="p-3">
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-dark bg-success shadow">
+    <div class="container-fluid d-flex justify-content-between">
+      <span class="navbar-brand fw-bold">Smart Waste Dashboard ♻</span>
+      <div>
+        <a href="waste-detection.html" class="btn btn-warning btn-sm me-2">AI Waste Detection</a>
+        <a href="map.html" class="btn btn-outline-light btn-sm">Bin Map</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <!-- LIVE CONNECTION STATUS -->
+    <div class="row g-3 mb-3">
+      <div class="col-md-4">
+        <div class="card p-3 shadow-sm" id="connectionCard">
+          <h6 class="fw-bold">🔌 Connection Status</h6>
+          <div class="d-flex align-items-center">
+            <span id="connDot" style="height:12px;width:12px;background:red;display:inline-block;border-radius:50%;margin-right:8px;"></span>
+            <span id="connText">Offline</span>
+          </div>
+          <small class="text-muted d-block mt-2">Last update: <span id="connLast">--</span></small>
+        </div>
+      </div>
+    </div>
+
+    <!-- College Bin Card -->
+    <div class="card p-3 mb-4">
+      <h5>🏫 JSS KUDADAN</h5>
+      <div class="progress my-2">
+        <div id="fillBar" class="progress-bar bg-success" style="width:0%">0%</div>
+      </div>
+      <p><b>Waste Detected:</b> <span id="wasteDetected">--</span></p>
+      <p><b>Type:</b> <span id="wasteType">--</span></p>
+      <p><b>Last Update:</b> <span id="lastUpdate">--</span></p>
+    </div>
+
+    <!-- Charts + Bin Health -->
+    <div class="row g-3">
+      <div class="col-lg-4">
+        <div class="card p-3">
+          <h6>🔋 Bin Health</h6>
+          <div class="mb-2">
+            <small>Battery Level</small>
+            <div class="progress" style="height:18px">
+              <div id="batteryBar" class="progress-bar bg-success" style="width:95%">95%</div>
+            </div>
+          </div>
+          <div>
+            <small>Collection Status:</small>
+            <h6 id="collectStatus" class="mt-1 text-success fw-bold">OK ✅</h6>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="card p-3">
+          <h6>📈 Fill Level Trend</h6>
+          <canvas id="fillChart" height="160"></canvas>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="card p-3">
+          <h6>🥗 Waste Type Distribution</h6>
+          <canvas id="wastePie" height="160"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Extra Insight Cards -->
+    <div class="row g-3 mt-3">
+      <div class="col-md-4">
+        <div class="card p-3">
+          <h6>🌍 Carbon Footprint Saved</h6>
+          <h3 id="carbonSaved">0 kg</h3>
+          <small class="text-muted">Estimated CO₂ reduction by recycling</small>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card p-3">
+          <h6>⏳ Time to Full</h6>
+          <h3 id="timeFull">--</h3>
+          <small class="text-muted">Predicted time until bin is full</small>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card p-3">
+          <h6>📊 Daily Summary</h6>
+          <h5 id="dailyWaste">0 updates</h5>
+          <small class="text-muted">Total updates recorded today</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity Log -->
+    <div class="card p-3 mt-3">
+      <h6>🕒 Activity Log</h6>
+      <table class="table table-sm table-striped">
+        <thead>
+          <tr><th>Time</th><th>Fill %</th><th>Status</th><th>Type</th></tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <footer class="text-white text-center bg-success mt-4 p-2">
+    <!-- Smart India Hackathon 2025 | Team Waste Warriors 🚀 -->
+  </footer>
+
+<script>
+/* ---------------- Firebase Config ---------------- */
+var firebaseConfig = {
+  apiKey: "AIzaSyAbF-1LGva27J1XP95UCNCvt-cZUnN6jOc",
+  authDomain: "waste-detection-5b56e.firebaseapp.com",
+  databaseURL: "https://waste-detection-5b56e-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "waste-detection-5b56e",
+  storageBucket: "waste-detection-5b56e.firebasestorage.app",
+  messagingSenderId: "2366107472",
+  appId: "1:2366107472:web:7c224b5ade3003b256c655"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+
+/* ---------------- Connection Status Logic ---------------- */
+let lastUpdateTime = Date.now();
+function setConnected(){
+  document.getElementById('connDot').style.background='limegreen';
+  document.getElementById('connText').innerText='Online';
+}
+function setDisconnected(){
+  document.getElementById('connDot').style.background='red';
+  document.getElementById('connText').innerText='Offline';
+}
+
+setInterval(()=>{
+  if(Date.now() - lastUpdateTime > 5000) setDisconnected();
+}, 1000);
+
+/* ---------------- Update Bin Card ---------------- */
+function updateBin(data){
+  let fill=data.fillLevel||0;
+  let waste=data.wasteDetected?"Yes":"No";
+  let type=(data.prediction&&data.prediction.type)?data.prediction.type:"--";
+  let conf=(data.prediction&&data.prediction.confidence)? " ("+(data.prediction.confidence*100).toFixed(0)+"%)":"";
+  let ts=new Date(data.ts||Date.now()).toLocaleString();
+
+  let bar=document.getElementById("fillBar");
+  bar.style.width=fill+"%";
+  bar.innerText=fill+"%";
+  bar.className="progress-bar "+(fill>=80?"bg-danger blink":(fill>=50?"bg-warning":"bg-success"));
+
+  document.getElementById("wasteDetected").innerText=waste;
+  document.getElementById("wasteType").innerText=type+conf;
+  document.getElementById("lastUpdate").innerText=ts;
+  document.getElementById("connLast").innerText=ts;
+
+  let carbon = (fill * 0.05).toFixed(2);
+  document.getElementById("carbonSaved").innerText = carbon + " kg";
+
+  let battery = 0; 
+  let battBar=document.getElementById("batteryBar");
+  battBar.style.width=battery+"%";
+  battBar.innerText=battery+"%";
+
+  if(fill>=80){
+    document.getElementById("collectStatus").innerText="Collection Required 🚛";
+    document.getElementById("collectStatus").className="mt-1 text-danger fw-bold";
+  }else{
+    document.getElementById("collectStatus").innerText="OK ✅";
+    document.getElementById("collectStatus").className="mt-1 text-success fw-bold";
+  }
+}
+
+/* ---------------- Charts ---------------- */
+const fillChart=new Chart(document.getElementById("fillChart"),{
+  type:"line",
+  data:{labels:[],datasets:[{label:"Fill %",data:[],borderColor:"#0d6efd",tension:0.25}]},
+  options:{scales:{y:{min:0,max:100}}}
+});
+const wastePie=new Chart(document.getElementById("wastePie"),{
+  type:"doughnut",
+  data:{labels:["Dry","Wet"],datasets:[{data:[0,0],backgroundColor:["#0d6efd","#28a745"]}]}
+});
+let counts={Dry:0,Wet:0};
+
+/* ---------------- History Log ---------------- */
+const historyBody=document.getElementById("historyBody");
+function addHistory(data){
+  const tr=document.createElement("tr");
+  tr.innerHTML=`<td>${new Date(data.ts||Date.now()).toLocaleString()}</td>
+                <td>${data.fillLevel||0}%</td>
+                <td>${data.fillLevel>=100?"FULL 🚨":"OK"}</td>
+                <td>${data.prediction?data.prediction.type+" ("+(data.prediction.confidence*100).toFixed(0)+"%)":"--"}</td>`;
+  historyBody.prepend(tr);
+  if(historyBody.children.length>20) historyBody.removeChild(historyBody.lastChild);
+}
+
+/* ---------------- Time Prediction ---------------- */
+let lastFill=null;
+function updateTimePrediction(data){
+  if(!lastFill){ lastFill={level:data.fillLevel,time:Date.now()}; return; }
+  let diff=data.fillLevel-lastFill.level;
+  let dt=(Date.now()-lastFill.time)/1000;
+  if(diff>0){
+    let rate=diff/dt;
+    let remain=(100-data.fillLevel)/rate;
+    document.getElementById("timeFull").innerText=Math.round(remain)+" sec (est)";
+    lastFill={level:data.fillLevel,time:Date.now()};
+  }
+}
+
+/* ---------------- Daily Summary ---------------- */
+let today=new Date().toDateString();
+let dailyCount=0;
+function updateDailySummary(){
+  document.getElementById("dailyWaste").innerText=dailyCount+" updates";
+}
+
+/* ---------------- FIREBASE LISTENER (FINAL FIXED) ---------------- */
+db.ref('/bins/bin1').on('value', snap => {
+  const data=snap.val();
+  if (!data) return;
+
+  // LIVE CONNECTION UPDATE
+  lastUpdateTime = Date.now();
+  setConnected();
+
+  // Update UI
+  updateBin(data);
+  updateTimePrediction(data);
+
+  // Fill Chart
+  let t=new Date(data.ts||Date.now()).toLocaleTimeString();
+  fillChart.data.labels.push(t);
+  fillChart.data.datasets[0].data.push(data.fillLevel);
+  if(fillChart.data.labels.length>15){
+    fillChart.data.labels.shift();
+    fillChart.data.datasets[0].data.shift();
+  }
+  fillChart.update();
+
+  // Waste Pie Chart
+  if(data.prediction && data.prediction.type){
+    if(data.prediction.type.toLowerCase().includes("dry")) counts.Dry++;
+    if(data.prediction.type.toLowerCase().includes("wet")) counts.Wet++;
+    wastePie.data.datasets[0].data = [counts.Dry, counts.Wet];
+    wastePie.update();
+  }
+
+  addHistory(data);
+
+  // Daily Summary
+  let currentDay=new Date().toDateString();
+  if(currentDay!==today){ today=currentDay; dailyCount=0; }
+  dailyCount++; updateDailySummary();
+});
+</script>
+
+</body>
+</html>

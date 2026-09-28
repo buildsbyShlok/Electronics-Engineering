@@ -1,0 +1,72 @@
+#include <WiFi.h>
+#include <Wire.h>
+#include "MAX30100_PulseOximeter.h"
+#include <WebServer.h>
+
+#define SDA_PIN 21
+#define SCL_PIN 22
+
+const char* ssid = "S24";
+const char* password = "12121212";
+
+PulseOximeter pox;
+WebServer server(80);
+
+float bpm = 0;
+float spo2 = 0;
+unsigned long lastReport = 0;
+
+void onBeatDetected() {
+  Serial.println("Beat!");
+}
+
+void handleData() {
+  String json = "{";
+  json += "\"bpm\":" + String(bpm, 0) + ",";
+  json += "\"spo2\":" + String(spo2, 0);
+  json += "}";
+
+  server.send(200, "application/json", json);
+}
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin(SDA_PIN, SCL_PIN);
+
+  if (!pox.begin()) {
+    Serial.println("MAX30100 FAILED");
+    while (1);
+  }
+
+  pox.setIRLedCurrent(MAX30100_LED_CURR_7_6MA);
+  pox.setOnBeatDetectedCallback(onBeatDetected);
+
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nConnected");
+  Serial.println(WiFi.localIP());
+
+  server.on("/data", handleData);
+  server.begin();
+}
+
+void loop() {
+  server.handleClient();
+  pox.update();
+
+  if (millis() - lastReport > 1000) {
+    lastReport = millis();
+    bpm = pox.getHeartRate();
+    spo2 = pox.getSpO2();
+
+    Serial.print("BPM: ");
+    Serial.print(bpm);
+    Serial.print("  SpO2: ");
+    Serial.println(spo2);
+  }
+}

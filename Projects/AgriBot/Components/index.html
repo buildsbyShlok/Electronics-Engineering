@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SmartFarm Dashboard</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Firebase compat SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+  <!-- DO NOT load app.js here -->
+  <style>
+    /* fallback shell styles */
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;color:#0b2b1a;background:linear-gradient(180deg,#eaf5ea 0%, #f2f6f1 100%)}
+    .container{max-width:1200px;margin:12px auto;padding:12px}
+    header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+    .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#2f7a3e,#88b04b);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
+    nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+    button.btn{background:#2f7a3e;color:white;border:none;padding:8px 12px;border-radius:8px;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">SF</div>
+      <div>
+        <h1 style="margin:0;font-size:18px">SmartFarm — Dashboard</h1>
+        <div style="color:#6b6b6b;font-size:13px">Real-time farm insights</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <div id="ui-location" style="color:#6b6b6b">Not set</div>
+        <button class="btn" id="btn-refresh">Refresh</button>
+      </div>
+    </header>
+
+    <nav>
+      <button class="btn" onclick="loadComponent('home')">Home</button>
+      <button class="btn" onclick="loadComponent('irrigation')">Irrigation</button>
+      <button class="btn" onclick="loadComponent('sunlight')">Sunlight</button>
+      <button class="btn" onclick="loadComponent('soil')">Soil</button>
+      <button class="btn" onclick="loadComponent('climate')">Climate</button>
+      <button class="btn" onclick="loadComponent('tank')">Tank</button>
+      <button class="btn" onclick="loadComponent('history')">History</button>
+      <button class="btn" onclick="loadComponent('ai')">AI</button>
+      <button class="btn" onclick="loadComponent('settings')">Settings</button>
+    </nav>
+
+    <main id="app-content"></main>
+
+    <footer style="margin-top:18px;color:#6b6b6b;font-size:13px;text-align:center">SmartFarm • Built with ESP32 & Firebase</footer>
+  </div>
+
+  <script>
+  // ---------- Firebase config (web) ----------
+  const FIREBASE_CONFIG = {
+    apiKey: "Your Api Key",
+    authDomain: "smartfarmbot-523a0.firebaseapp.com",
+    // **FIXED: correct region 'asia-southeast1'**
+    databaseURL: "Firebase data url",
+    projectId: "smartfarmbot-523a0",
+    storageBucket: "smartfarmbot-523a0.firebasestorage.app",
+    messagingSenderId: "307503904804",
+    appId: "1:307503904804:web:789dae5e29f3b79a8bc0b1"
+  };
+
+  const WEATHER_API_KEY = "";
+
+  // Initialize Firebase (compat)
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const db = firebase.database();
+
+  // quick manual debug check to ensure DB reachable & data exists
+  (async function debugFirebaseRead(){
+    try{
+      console.log('[DEBUG] Checking Firebase connectivity...');
+      const snap = await db.ref('/smartFarm/sensors').once('value');
+      console.log('[DEBUG] /smartFarm/sensors snapshot:', snap.val());
+      // attach a very small manual listener for immediate visual confirmation
+      db.ref('/smartFarm/sensors').on('value', s=>{
+        console.log('[DEBUG on] sensors changed ->', s.val());
+      });
+    }catch(err){
+      console.error('[DEBUG] Firebase read error', err);
+    }
+  })();
+
+  // wire refresh button (keeps working)
+  document.getElementById('btn-refresh').addEventListener('click', ()=>{ alert('Refreshed — realtime listeners are active. Check Console for logs.'); });
+  </script>
+
+  <!-- LOAD THE APP AFTER FIREBASE INIT -->
+  <script src="app.js"></script>
+</body>
+</html>

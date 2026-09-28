@@ -1,0 +1,39 @@
+<div class="card">
+  <h2>Soil Behavior</h2>
+  <p class="sub">Moisture decay curve and soil insight</p>
+  <canvas id="soil-decay" style="height:220px"></canvas>
+  <div id="soil-insight" style="margin-top:8px"></div>
+</div>
+
+<script>
+function init_soil(){
+  const ctx = document.getElementById('soil-decay').getContext('2d');
+  window.soilDecayChart = new Chart(ctx,{type:'line',data:{labels:[],datasets:[{label:'Soil %',data:[],borderColor:'#2f7a3e',tension:0.3}]},options:{responsive:true}});
+
+  function update(v){
+    const soilCap = v.soilCapacitive?.value ?? null;
+    const soilFork = v.soilFork?.value ?? null;
+    const avg = (soilCap!=null && soilFork!=null) ? ((Number(soilCap)+Number(soilFork))/2) : (soilCap!=null?Number(soilCap):(soilFork!=null?Number(soilFork):null));
+    if(avg!=null){
+      window.soilDecayChart.data.labels.push('');
+      window.soilDecayChart.data.datasets[0].data.push(Number(avg));
+      if(window.soilDecayChart.data.labels.length > 120){ window.soilDecayChart.data.labels.shift(); window.soilDecayChart.data.datasets[0].data.shift(); }
+      window.soilDecayChart.update();
+    }
+    // soil insight simple heuristic
+    const d = window.soilDecayChart.data.datasets[0].data;
+    let insightText = 'Collecting data...';
+    if(d.length > 10){
+      const first = d[d.length-10];
+      const last = d[d.length-1];
+      if(first - last > 20) insightText = 'Soil dries fast — likely sandy. Increase irrigation frequency or add mulch.';
+      else if(first - last < 5) insightText = 'Soil retains water well — likely loamy/clayey. Reduce irrigation frequency.';
+      else insightText = 'Soil behavior moderate.';
+    }
+    document.getElementById('soil-insight').textContent = insightText;
+  }
+
+  window.addEventListener('sf:realtime', (e)=> update(e.detail || {}));
+  if(window.globalState && window.globalState.latest) update(window.globalState.latest);
+}
+</script>
